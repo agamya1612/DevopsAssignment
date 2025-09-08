@@ -110,10 +110,12 @@ resource "aws_db_instance" "webapp_db" {
   allocated_storage     = 20
   username              = var.db_username
   password              = var.db_password
-  db_subnet_group_name  = "webapp-rds-subnets"  # Name, not ARN
+  db_subnet_group_name  = "webapp-rds-subnets" 
   vpc_security_group_ids = ["sg-041b42b862fd3bc4a"]
 
   backup_retention_period = var.db_backup_retention_days
   backup_window           = "03:00-04:00"
   multi_az                = true
+  skip_final_snapshot =  false
 }
+

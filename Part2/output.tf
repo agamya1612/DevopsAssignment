@@ -6,6 +6,6 @@ output "ecr_repository_url" {
   value = aws_ecr_repository.app.repository_url
 }
 
-output "secrets_manager_arn" {
-  value = aws_secretsmanager_secret.db.arn
-}
+# output "secrets_manager_arn" {
+#   value = aws_secretsmanager_secret.db.arn
+# }

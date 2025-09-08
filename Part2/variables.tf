@@ -1,9 +1,19 @@
 variable "project" {
-  default = "webapp"
+  description = "Project name prefix"
+  type        = string
+  default     = "webapp"
+}
+
+variable "env" {
+  description = "Deployment environment (dev, staging, prod)"
+  type        = string
+  default     = "dev"
 }
 
 variable "region" {
   description = "AWS region to deploy ECS service"
+  type        = string
+  default     = "ap-south-1"
 }
 
 variable "subnets" {
@@ -17,18 +27,36 @@ variable "security_groups" {
 }
 
 # DB details to store in Secrets Manager
-variable "db_host" {}
-variable "db_name" {}
-variable "db_user" {}
+variable "db_host" {
+  description = "Database host endpoint"
+  type        = string
+}
+
+variable "db_name" {
+  description = "Database name"
+  type        = string
+}
+
+variable "db_user" {
+  description = "Database username"
+  type        = string
+}
+
 variable "db_password" {
-  sensitive = true
+  description = "Database password"
+  type        = string
+  sensitive   = true
 }
 
 # App container settings
 variable "container_port" {
-  default = 5000
+  description = "App container port"
+  type        = number
+  default     = 5000
 }
 
 variable "desired_count" {
-  default = 2
+  description = "Number of ECS tasks to run"
+  type        = number
+  default     = 2
 }
