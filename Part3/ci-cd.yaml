@@ -7,7 +7,7 @@ on:
   workflow_dispatch: 
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: my-app
+  ECR_REPOSITORY: webapp-repo-dev
   STAGING_CLUSTER: my-cluster-staging
   PROD_CLUSTER: my-cluster-prod
   STAGING_SERVICE: my-service-staging
