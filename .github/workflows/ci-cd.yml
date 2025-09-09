@@ -1,0 +1,111 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main       
+  workflow_dispatch: 
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: my-app
+  STAGING_CLUSTER: my-cluster-staging
+  PROD_CLUSTER: my-cluster-prod
+  STAGING_SERVICE: my-service-staging
+  PROD_SERVICE: my-service-prod
+
+jobs:
+  # ----------------------------
+  # 1. Source & Build Stage
+  # ----------------------------
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Build Docker Image
+        run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+
+      - name: Run Unit Tests
+        run: docker run --rm ${{ env.ECR_REPOSITORY }}:${{ github.sha }} pytest
+
+      - name: Run Security Scan
+        run: docker scan ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Tag & Push Docker Image to ECR
+        run: |
+          docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+  # ----------------------------
+  # 2. Deploy to Staging
+  # ----------------------------
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy ECS Service to Staging
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.STAGING_CLUSTER }} \
+            --service ${{ env.STAGING_SERVICE }} \
+            --force-new-deployment
+
+      - name: Run Integration Tests
+        run: ./scripts/integration-tests.sh
+
+  # ----------------------------
+  # 3. Deploy to Production
+  # ----------------------------
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'workflow_dispatch'  # Only run on manual trigger
+
+    steps:
+      - name: Manual Approval
+        uses: hmarr/auto-approve-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy ECS Service to Production
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.PROD_CLUSTER }} \
+            --service ${{ env.PROD_SERVICE }} \
+            --force-new-deployment
