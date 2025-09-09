@@ -9,10 +9,9 @@ env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: webapp-repo-dev
   STAGING_CLUSTER: my-cluster-staging
-  PROD_CLUSTER: my-cluster-prod
+  PROD_CLUSTER: my-cluster-prod1
   STAGING_SERVICE: my-service-staging
-  PROD_SERVICE: my-service-prod
-
+  PROD_SERVICE: my-service-prod1
 jobs:
   # ----------------------------
   # 1. Source & Build Stage
